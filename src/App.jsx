@@ -26,6 +26,9 @@ import progressBarStars from '../assets/progress_bar_stars.png';
 import star from '../assets/star.png';
 import starSelected from '../assets/star_selected.png';
 
+// Default Spotify playlist to load when Spotify is selected
+const DEFAULT_SPOTIFY_PLAYLIST = '2OVFqFdp6mUd7yRetAznKe';
+
 function useResize(corner) {
   const onMouseDown = useCallback((e) => {
     e.preventDefault();
@@ -202,13 +205,15 @@ export default function App() {
   const [loadingPlaylists, setLoadingPlaylists] = useState(false);
   const [loadingPlaylist, setLoadingPlaylist] = useState(false);
   const [settingsError, setSettingsError] = useState(null);
+  const [autoPlayRequested, setAutoPlayRequested] = useState(false);
   const [musicService, setMusicService] = useState(() => {
     try {
-      const stored = localStorage.getItem('cupid-player-music-service');
+      const stored = localStorage.getItem('cass-player-music-service');
       if (stored === 'spotify' || stored === 'apple' || stored === 'youtube' || stored === 'local') return stored;
     } catch {
       // ignore
     }
+    if (isSpotifyLoggedIn()) return 'spotify';
     return 'local';
   }); // 'spotify' | 'apple' | 'youtube' | 'local'
   const [playMode, setPlayMode] = useState('normal'); // 'normal' | 'shuffle' | 'repeat'
@@ -252,6 +257,12 @@ export default function App() {
 
   const cyclePlayMode = useCallback(() => {
     setPlayMode((m) => m === 'normal' ? 'shuffle' : m === 'shuffle' ? 'repeat' : 'normal');
+  }, []);
+
+  const beginStreamingPlaylist = useCallback((tracks, shouldAutoPlay = true) => {
+    setStreamTracks(tracks);
+    setSource('streaming');
+    setAutoPlayRequested(shouldAutoPlay);
   }, []);
 
   // ── Fetch Spotify playlists ────────────────────────────
@@ -299,8 +310,7 @@ export default function App() {
         setSettingsError('Playlist is empty or private');
         return;
       }
-      setStreamTracks(tracks);
-      setSource('streaming');
+      beginStreamingPlaylist(tracks);
       setYoutubeUrlInput('');
     } catch (err) {
       setSettingsError(err.message);
@@ -311,6 +321,11 @@ export default function App() {
 
   // ── Handle Spotify OAuth callback on mount ─────────────
   useEffect(() => {
+    if (isSpotifyLoggedIn() && musicService !== 'spotify') {
+      setMusicService('spotify');
+      try { localStorage.setItem('cass-player-music-service', 'spotify'); } catch { /* ignore */ }
+    }
+
     async function checkCallback() {
       const params = new URLSearchParams(window.location.search);
       if (params.has('code')) {
@@ -346,14 +361,34 @@ export default function App() {
         setSettingsError('Playlist is empty');
         return;
       }
-      setStreamTracks(tracks);
-      setSource('streaming');
+      beginStreamingPlaylist(tracks);
     } catch (err) {
       setSettingsError(err.message);
     } finally {
       setLoadingPlaylist(false);
     }
-  }, []);
+  }, [beginStreamingPlaylist]);
+
+  // If the user has selected Spotify as their music service and is
+  // authenticated, auto-load the provided default playlist ID.
+  useEffect(() => {
+    if (musicService === 'spotify' && spotifyConnected) {
+      // fire-and-forget: loadPlaylist will set errors if it fails
+      loadPlaylist(DEFAULT_SPOTIFY_PLAYLIST, 'spotify');
+    }
+  }, [musicService, spotifyConnected, loadPlaylist]);
+
+  useEffect(() => {
+    if (!autoPlayRequested) return;
+    if (source !== 'streaming' || streamTracks.length === 0) return;
+    if (streaming.isPlaying) {
+      setAutoPlayRequested(false);
+      return;
+    }
+
+    streaming.togglePlay();
+    setAutoPlayRequested(false);
+  }, [autoPlayRequested, source, streamTracks.length, streaming]);
 
   const { theme, toggleTheme, assets } = useTheme();
 
@@ -472,7 +507,7 @@ export default function App() {
       <img src={assets.frame} className="layer" alt="" draggable={false} />
 
       {/* Window title */}
-      <div className="window-title">cupid player</div>
+      <div className="window-title">cass player</div>
 
       {/* Record player centered in frame */}
       <img src={assets.recordPlayer} className="record-player" alt="" draggable={false} />
@@ -722,7 +757,7 @@ export default function App() {
               ]}
               onChange={(next) => {
                 setMusicService(next);
-                try { localStorage.setItem('cupid-player-music-service', next); } catch { /* ignore */ }
+                try { localStorage.setItem('cass-player-music-service', next); } catch { /* ignore */ }
                 if (next === 'local') setSource('local');
               }}
             />

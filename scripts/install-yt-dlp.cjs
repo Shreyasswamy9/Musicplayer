@@ -40,7 +40,7 @@ function httpsGet(url, accept = 'application/octet-stream') {
   return new Promise((resolve, reject) => {
     const opts = {
       headers: {
-        'User-Agent': 'cupid-player-install-script',
+        'User-Agent': 'cass-player-install-script',
         'Accept': accept,
       },
     };

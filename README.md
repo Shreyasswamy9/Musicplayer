@@ -1,4 +1,4 @@
-# cupid music player
+# Cass Player
 
 A pixel-art desktop music player built with Electron, Vite, and React.
 
@@ -65,9 +65,9 @@ The local playlist is driven by a single file, `playlist.json`, that lives next 
 ### Where the audio folder lives
 
 - **Running from source (dev):** `audio/` in the project root.
-- **Installed app (macOS):** `~/Library/Application Support/Cupid Player/audio/`
-- **Installed app (Windows):** `%APPDATA%\Cupid Player\audio\`
-- **Installed app (Linux):** `~/.config/Cupid Player/audio/`
+- **Installed app (macOS):** `~/Library/Application Support/Cass Player/audio/`
+- **Installed app (Windows):** `%APPDATA%\\Cass Player\\audio\\`
+- **Installed app (Linux):** `~/.config/Cass Player/audio/`
 
 On first launch, the installed app seeds this folder with the bundled defaults. After that it's yours to edit — the app never overwrites it.
 
@@ -150,10 +150,10 @@ npm run package
 
 **macOS:**
 ```bash
-cp -r "out/mac-arm64/Cupid Player.app" /Applications/
+cp -r "out/mac-arm64/Cass Player.app" /Applications/
 ```
 
-**Windows:** Run the installer from `out/Cupid Player Setup.exe`. If `npm run package` fails at the NSIS step with "Cannot create symbolic link," enable **Developer Mode** in Settings → System → For developers, then re-run. The unpacked app at `out/win-unpacked/Cupid Player.exe` is fully runnable in the meantime — no installer required.
+**Windows:** Run the installer from `out/Cass Player Setup.exe`. If `npm run package` fails at the NSIS step with "Cannot create symbolic link," enable **Developer Mode** in Settings → System → For developers, then re-run. The unpacked app at `out/win-unpacked/Cass Player.exe` is fully runnable in the meantime — no installer required.
 
 **Linux:** Run the AppImage from `out/`.
 

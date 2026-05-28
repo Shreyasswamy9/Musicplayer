@@ -132,7 +132,7 @@ const THEME_ASSETS = {
   },
 };
 
-const STORAGE_KEY = 'cupid-player-theme';
+const STORAGE_KEY = 'cass-player-theme';
 
 function getStoredTheme() {
   try {

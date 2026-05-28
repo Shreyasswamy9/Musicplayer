@@ -35,7 +35,7 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
   const [currentTime, setCurrentTime] = useState(0);
   const [loading, setLoading] = useState(false);
   const [volume, setVolumeState] = useState(() => {
-    const saved = localStorage.getItem('cupid-volume');
+    const saved = localStorage.getItem('cass-volume');
     return saved !== null ? parseFloat(saved) : 1;
   });
   const [muted, setMuted] = useState(false);
@@ -212,7 +212,7 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
     const clamped = Math.max(0, Math.min(1, v));
     setVolumeState(clamped);
     audio.volume = clamped;
-    localStorage.setItem('cupid-volume', clamped);
+    localStorage.setItem('cass-volume', clamped);
     if (clamped > 0) setMuted(false);
   }, []);
 

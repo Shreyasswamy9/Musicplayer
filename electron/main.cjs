@@ -10,6 +10,10 @@ const http = require('node:http');
 const fs = require('node:fs');
 const jwt = require('jsonwebtoken');
 
+// Allow the app to start audio playback without requiring a user gesture.
+// This keeps the single-user startup flow frictionless.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 const execFileAsync = promisify(execFile);
 
 // Custom protocol used by the renderer's <audio> — main fetches the actual
@@ -610,7 +614,7 @@ ipcMain.handle('youtube-oauth-start', async (_e, { clientId, scope, state, codeC
 
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       if (error) {
-        res.end(`<!doctype html><meta charset=utf-8><title>cupid player</title><style>body{font-family:system-ui;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style><div>Auth failed: ${error}. You can close this window.</div>`);
+        res.end(`<!doctype html><meta charset=utf-8><title>Cass Player</title><style>body{font-family:system-ui;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style><div>Auth failed: ${error}. You can close this window.</div>`);
         rejectCode(new Error(error));
       } else if (!code) {
         res.end('<!doctype html><meta charset=utf-8><div>Missing code. You can close this window.</div>');
@@ -619,7 +623,7 @@ ipcMain.handle('youtube-oauth-start', async (_e, { clientId, scope, state, codeC
         res.end('<!doctype html><meta charset=utf-8><div>State mismatch. You can close this window.</div>');
         rejectCode(new Error('OAuth state mismatch'));
       } else {
-        res.end('<!doctype html><meta charset=utf-8><title>cupid player</title><style>body{font-family:system-ui;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style><div>✓ Signed in — you can close this window and return to Cupid Player.</div>');
+        res.end('<!doctype html><meta charset=utf-8><title>Cass Player</title><style>body{font-family:system-ui;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style><div>✓ Signed in — you can close this window and return to Cass Player.</div>');
         resolveCode(code);
       }
 

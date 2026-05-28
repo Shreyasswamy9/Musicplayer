@@ -58,7 +58,7 @@ export async function initMusicKit() {
   musicKitInstance = await window.MusicKit.configure({
     developerToken: devToken,
     app: {
-      name: 'Cupid Player',
+      name: 'Cass Player',
       build: '1.0.0',
     },
   });
