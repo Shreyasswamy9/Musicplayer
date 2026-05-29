@@ -1,6 +1,6 @@
 # Cass Player
 
-A pixel-art desktop music player built with Electron, Vite, and React.
+A pixel-art macOS desktop music player built with Electron, Vite, and React.
 
 ## Features
 
@@ -9,8 +9,6 @@ A pixel-art desktop music player built with Electron, Vite, and React.
 - Interactive progress bar with draggable star indicator
 - Marquee scrolling for long track titles
 - Pink and blue theme switching with persistent preference
-- Spotify integration — browse your playlists and play tracks via yt-dlp
-- Apple Music integration — browse your library playlists via MusicKit JS
 - YouTube playlists — paste any public playlist URL (no sign-in) or sign in with Google to browse your own
 - Local MP3 playback
 - Custom frameless window with drag and resize
@@ -93,31 +91,6 @@ On first launch, the installed app seeds this folder with the bundled defaults. 
 
 `.mp3`, `.m4a`, `.aac`, `.flac`, `.wav`, `.ogg`, `.opus`.
 
-## Spotify Setup
-
-Stream any track from your Spotify playlists. Audio is fetched from YouTube via yt-dlp.
-
-> **Note:** As of February 2026, Spotify requires the developer account that creates the app to have an active Premium subscription ([announcement](https://developer.spotify.com/blog/2026-02-06-update-on-developer-access-and-platform-security)). Without it, the Spotify API returns 403 for all users.
-
-1. Create a Spotify app at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
-2. Add `http://127.0.0.1:5173/callback` as a redirect URI
-3. Copy `.env.example` to `.env` and add your Client ID
-4. Add yourself under Settings > User Management
-5. Click the settings icon in the player > log in
-
-See [SPOTIFY_SETUP.md](SPOTIFY_SETUP.md) for detailed instructions and troubleshooting.
-
-## Apple Music Setup
-
-Browse your Apple Music library playlists. Requires an Apple Developer account. **Apple Music subscription is not required for playback.**
-
-1. Create a MusicKit key at [developer.apple.com/account/resources/authkeys](https://developer.apple.com/account/resources/authkeys/list)
-2. Download the `.p8` key file and place it in the project root
-3. Add `APPLE_TEAM_ID` and `APPLE_KEY_ID` to your `.env`
-4. Click the settings icon > switch to apple > log in
-
-See [APPLE_MUSIC_SETUP.md](APPLE_MUSIC_SETUP.md) for detailed instructions and troubleshooting.
-
 ## YouTube Setup
 
 Two flows — pick whichever you want by configuring (or not) your `.env`. **No YouTube Premium / no subscription required** in either case.
@@ -153,10 +126,6 @@ npm run package
 cp -r "out/mac-arm64/Cass Player.app" /Applications/
 ```
 
-**Windows:** Run the installer from `out/Cass Player Setup.exe`. If `npm run package` fails at the NSIS step with "Cannot create symbolic link," enable **Developer Mode** in Settings → System → For developers, then re-run. The unpacked app at `out/win-unpacked/Cass Player.exe` is fully runnable in the meantime — no installer required.
-
-**Linux:** Run the AppImage from `out/`.
-
 > Note: The macOS build is unsigned. On first launch you may need to right-click > Open, or go to System Settings > Privacy & Security to allow it.
 
 ## Tech Stack
@@ -165,10 +134,7 @@ cp -r "out/mac-arm64/Cass Player.app" /Applications/
 - **Vite** — build tool and dev server
 - **React** — UI framework
 - **HTML5 Audio** — local MP3 playback
-- **yt-dlp** — YouTube audio streaming for Spotify/Apple/YouTube tracks; also fetches public YouTube playlist contents via `--flat-playlist`
-- **Spotify Web API** — playlist and metadata fetching (OAuth PKCE)
-- **Apple MusicKit JS** — library playlist access (JWT auth)
+- **yt-dlp** — YouTube audio streaming and public playlist extraction via `--flat-playlist`
 - **YouTube Data API v3** — sign-in browsing of the user's own playlists (Google OAuth PKCE, free quota)
 - **CSS** — custom properties for theming, calc-based responsive scaling
-- **Node.js** — main process (JWT generation, yt-dlp execution)
-- **jsonwebtoken** — Apple Music developer token generation
+- **Node.js** — main process (yt-dlp execution)

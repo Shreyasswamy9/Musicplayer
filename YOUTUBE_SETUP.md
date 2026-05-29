@@ -5,7 +5,7 @@ Cass Player supports two YouTube paths:
 1. **Public playlist URLs** — paste any YouTube playlist link. **No sign-in, no API key, no subscription.** This works out of the box with no setup at all.
 2. **Your own playlists** — sign in with Google so the app can list the playlists on your account. Free quota via the YouTube Data API. **No YouTube Premium required**, on your account or the developer account.
 
-Audio in both modes streams via yt-dlp (the same path used for Spotify and Apple Music tracks).
+Audio in both modes streams via yt-dlp.
 
 > **UI note:** the URL-paste box and the sign-in flow are mutually exclusive in the settings panel. If `VITE_YOUTUBE_CLIENT_ID` is set in `.env`, only the sign-in flow shows. If it's not set, only the URL-paste box shows. Pick one path based on your needs.
 
@@ -69,7 +69,7 @@ After approving the scope, the browser shows a confirmation page and the app lis
 
 - **URL paste path:** the main process runs `yt-dlp --flat-playlist --dump-single-json <url>` to extract the playlist's video IDs and titles. No network call to YouTube from the renderer.
 - **OAuth path:** the renderer holds a Google access token in `localStorage`, calls `playlists.list?mine=true` and `playlistItems.list` against the YouTube Data API. Tokens refresh automatically on expiry. The loopback HTTP server in the main process catches the redirect on a random `http://127.0.0.1:<port>` (Google's "Loopback IP" flow for installed apps).
-- **Playback:** in both paths, the player already knows the YouTube video ID for each track, so it skips the YouTube-search step and goes straight to `yt-dlp -g <video URL>` to grab the stream. This makes YouTube playlists faster to play than Spotify/Apple tracks (which need a search to find the matching video).
+- **Playback:** in both paths, the player already knows the YouTube video ID for each track, so it skips the YouTube-search step and goes straight to `yt-dlp -g <video URL>` to grab the stream.
 
 ## Troubleshooting
 

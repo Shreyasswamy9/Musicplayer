@@ -13,7 +13,7 @@ export default function useAudioPlayer(tracks, playMode = 'normal', getAudioPath
   playModeRef.current = playMode;
   const [trackIndex, setTrackIndex] = useState(0);
 
-  // Reset index when the playlist array changes (mirrors useSpotifyPlayer)
+  // Reset index when the playlist array changes.
   const prevTracksRef = useRef(tracks);
   if (prevTracksRef.current !== tracks) {
     prevTracksRef.current = tracks;

@@ -2,12 +2,8 @@ import { useCallback, useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './App.css';
 import useAudioPlayer from './useAudioPlayer';
-import useSpotifyPlayer from './useSpotifyPlayer';
+import useStreamingPlayer from './useStreamingPlayer';
 import useTheme from './useTheme';
-import { login as spotifyLogin, handleCallback, isLoggedIn as isSpotifyLoggedIn, logout as spotifyLogout } from './spotify/auth.js';
-import { fetchPlaylistTracks as fetchSpotifyTracks, fetchMyPlaylists as fetchSpotifyPlaylists } from './spotify/api.js';
-import { login as appleLogin, logout as appleLogout, isLoggedIn as isAppleLoggedIn, initMusicKit } from './apple/auth.js';
-import { fetchMyPlaylists as fetchApplePlaylists, fetchPlaylistTracks as fetchAppleTracks } from './apple/api.js';
 import {
   login as youtubeLogin,
   logout as youtubeLogout,
@@ -26,8 +22,7 @@ import progressBarStars from '../assets/progress_bar_stars.png';
 import star from '../assets/star.png';
 import starSelected from '../assets/star_selected.png';
 
-// Default Spotify playlist to load when Spotify is selected
-const DEFAULT_SPOTIFY_PLAYLIST = '2OVFqFdp6mUd7yRetAznKe';
+// no external music defaults; only local and YouTube supported
 
 function useResize(corner) {
   const onMouseDown = useCallback((e) => {
@@ -193,14 +188,10 @@ function MarqueeText({ className, text }) {
 export default function App() {
   // ── Source state ─────────────────────────────────────────
   const [source, setSource] = useState('local'); // 'local' | 'streaming'
-  const [spotifyConnected, setSpotifyConnected] = useState(isSpotifyLoggedIn());
-  const [appleConnected, setAppleConnected] = useState(isAppleLoggedIn());
   const [youtubeConnected, setYoutubeConnected] = useState(isYouTubeLoggedIn());
   const [youtubeLoggingIn, setYoutubeLoggingIn] = useState(false);
   const [youtubeUrlInput, setYoutubeUrlInput] = useState('');
   const [streamTracks, setStreamTracks] = useState([]);
-  const [spotifyPlaylists, setSpotifyPlaylists] = useState([]);
-  const [applePlaylists, setApplePlaylists] = useState([]);
   const [youtubePlaylists, setYoutubePlaylists] = useState([]);
   const [loadingPlaylists, setLoadingPlaylists] = useState(false);
   const [loadingPlaylist, setLoadingPlaylist] = useState(false);
@@ -209,13 +200,12 @@ export default function App() {
   const [musicService, setMusicService] = useState(() => {
     try {
       const stored = localStorage.getItem('cass-player-music-service');
-      if (stored === 'spotify' || stored === 'apple' || stored === 'youtube' || stored === 'local') return stored;
+      if (stored === 'youtube' || stored === 'local') return stored;
     } catch {
       // ignore
     }
-    if (isSpotifyLoggedIn()) return 'spotify';
     return 'local';
-  }); // 'spotify' | 'apple' | 'youtube' | 'local'
+  }); // 'youtube' | 'local'
   const [playMode, setPlayMode] = useState('normal'); // 'normal' | 'shuffle' | 'repeat'
   const [volumeHovered, setVolumeHovered] = useState(false);
   const [volumeDragging, setVolumeDragging] = useState(false);
@@ -236,7 +226,7 @@ export default function App() {
   useEffect(() => { loadLocalPlaylist(); }, [loadLocalPlaylist]);
 
   const local = useAudioPlayer(localTracks, playMode, window.cupid?.getLocalAudioPath);
-  const streaming = useSpotifyPlayer(streamTracks, playMode);
+  const streaming = useStreamingPlayer(streamTracks, playMode);
   const player = source === 'streaming' ? streaming : local;
 
   const {
@@ -263,26 +253,6 @@ export default function App() {
     setStreamTracks(tracks);
     setSource('streaming');
     setAutoPlayRequested(shouldAutoPlay);
-  }, []);
-
-  // ── Fetch Spotify playlists ────────────────────────────
-  const loadSpotifyPlaylists = useCallback((silent = false) => {
-    setLoadingPlaylists(true);
-    if (!silent) setSettingsError(null);
-    fetchSpotifyPlaylists()
-      .then((p) => { setSpotifyPlaylists(p); setSettingsError(null); })
-      .catch((err) => { if (!silent) setSettingsError(err.message); })
-      .finally(() => setLoadingPlaylists(false));
-  }, []);
-
-  // ── Fetch Apple Music playlists ────────────────────────
-  const loadApplePlaylists = useCallback((silent = false) => {
-    setLoadingPlaylists(true);
-    if (!silent) setSettingsError(null);
-    fetchApplePlaylists()
-      .then((p) => { setApplePlaylists(p); setSettingsError(null); })
-      .catch((err) => { if (!silent) setSettingsError(err.message); })
-      .finally(() => setLoadingPlaylists(false));
   }, []);
 
   // ── Fetch YouTube playlists (Data API, requires sign-in) ─
@@ -319,31 +289,9 @@ export default function App() {
     }
   }, []);
 
-  // ── Handle Spotify OAuth callback on mount ─────────────
+  // ── On mount, load any YouTube playlists if signed in ─────
   useEffect(() => {
-    if (isSpotifyLoggedIn() && musicService !== 'spotify') {
-      setMusicService('spotify');
-      try { localStorage.setItem('cass-player-music-service', 'spotify'); } catch { /* ignore */ }
-    }
-
-    async function checkCallback() {
-      const params = new URLSearchParams(window.location.search);
-      if (params.has('code')) {
-        try {
-          await handleCallback();
-          setSpotifyConnected(true);
-          // Small delay to let token settle before fetching
-          setTimeout(() => loadSpotifyPlaylists(true), 500);
-        } catch (err) {
-          setSettingsError(err.message);
-        }
-      } else {
-        if (isSpotifyLoggedIn()) loadSpotifyPlaylists(true);
-        if (isAppleLoggedIn()) loadApplePlaylists(true);
-        if (isYouTubeLoggedIn()) loadYoutubePlaylists(true);
-      }
-    }
-    checkCallback();
+    if (isYouTubeLoggedIn()) loadYoutubePlaylists(true);
   }, []);
 
   // ── Load a playlist by ID (works for all services) ────
@@ -351,12 +299,11 @@ export default function App() {
     setLoadingPlaylist(true);
     setSettingsError(null);
     try {
-      const fetcher = service === 'apple'
-        ? fetchAppleTracks
-        : service === 'youtube'
-          ? fetchYouTubeTracks
-          : fetchSpotifyTracks;
-      const tracks = await fetcher(id);
+      if (service !== 'youtube') {
+        setSettingsError('Only YouTube playlists are supported for streaming in this build');
+        return;
+      }
+      const tracks = await fetchYouTubeTracks(id);
       if (tracks.length === 0) {
         setSettingsError('Playlist is empty');
         return;
@@ -368,15 +315,6 @@ export default function App() {
       setLoadingPlaylist(false);
     }
   }, [beginStreamingPlaylist]);
-
-  // If the user has selected Spotify as their music service and is
-  // authenticated, auto-load the provided default playlist ID.
-  useEffect(() => {
-    if (musicService === 'spotify' && spotifyConnected) {
-      // fire-and-forget: loadPlaylist will set errors if it fails
-      loadPlaylist(DEFAULT_SPOTIFY_PLAYLIST, 'spotify');
-    }
-  }, [musicService, spotifyConnected, loadPlaylist]);
 
   useEffect(() => {
     if (!autoPlayRequested) return;
@@ -394,7 +332,7 @@ export default function App() {
 
   const [recordFrame, setRecordFrame] = useState(0);
   const [needleFrame, setNeedleFrame] = useState(0);
-  const [isPink, setIsPink] = useState(theme === 'pink');
+  const [isPurple, setIsPurple] = useState(theme === 'purple');
   const [swapping, setSwapping] = useState(false);
   const [needleLifted, setNeedleLifted] = useState(false);
   const [starHovered, setStarHovered] = useState(false);
@@ -448,8 +386,8 @@ export default function App() {
   // tracks load async. Both should silently set the ref without animating.
   const prevTrackRef = useRef(null);
 
-  const currentFrames = isPink ? assets.recordFramesA : assets.recordFramesB;
-  const incomingFrames = isPink ? assets.recordFramesB : assets.recordFramesA;
+  const currentFrames = isPurple ? assets.recordFramesA : assets.recordFramesB;
+  const incomingFrames = isPurple ? assets.recordFramesB : assets.recordFramesA;
 
   // Spin animation while playing
   useEffect(() => {
@@ -482,7 +420,7 @@ export default function App() {
 
     // Finish swap, switch color
     setTimeout(() => {
-      setIsPink((p) => !p);
+      setIsPurple((p) => !p);
       setRecordFrame(0);
       setSwapping(false);
     }, 1000);
@@ -623,7 +561,11 @@ export default function App() {
             now playing...
           </div>
           <MarqueeText className="track-title" text={track.title} />
-          <div className="track-artist">by {track.artist}</div>
+          {track.artist ? (
+            <div className="track-artist">by {track.artist}</div>
+          ) : (
+            <div className="track-artist" />
+          )}
         </div>
       </div>
 
@@ -734,10 +676,10 @@ export default function App() {
             <div className="settings-label">theme</div>
             <div className="settings-theme-row">
               <button
-                className={`settings-theme-btn ${theme === 'pink' ? 'active' : ''}`}
-                onClick={() => { if (theme !== 'pink') toggleTheme(); }}
+                className={`settings-theme-btn ${theme === 'purple' ? 'active' : ''}`}
+                onClick={() => { if (theme !== 'purple') toggleTheme(); }}
               >
-                pink
+                purple
               </button>
               <button
                 className={`settings-theme-btn ${theme === 'blue' ? 'active' : ''}`}
@@ -751,8 +693,6 @@ export default function App() {
               value={musicService}
               options={[
                 { value: 'local', label: 'local' },
-                { value: 'spotify', label: 'spotify' },
-                { value: 'apple', label: 'apple' },
                 { value: 'youtube', label: 'youtube' },
               ]}
               onChange={(next) => {
@@ -769,82 +709,6 @@ export default function App() {
               >
                 reload
               </button>
-            )}
-
-            {musicService === 'spotify' && (
-              !spotifyConnected ? (
-                <button className="settings-theme-btn" onClick={() => spotifyLogin()}>
-                  log in
-                </button>
-              ) : (
-                <>
-                  <PlaylistList
-                    loading={loadingPlaylists}
-                    playlists={spotifyPlaylists}
-                    loadingPlaylist={loadingPlaylist}
-                    onSelect={(id) => loadPlaylist(id, 'spotify')}
-                  />
-                  <div className="settings-theme-row">
-                    <button
-                      className={`settings-theme-btn ${loadingPlaylists ? 'disabled' : ''}`}
-                      disabled={loadingPlaylists}
-                      onClick={() => loadSpotifyPlaylists()}
-                    >
-                      refresh
-                    </button>
-                    <button className="settings-theme-btn" onClick={() => {
-                      spotifyLogout();
-                      setSpotifyConnected(false);
-                      setSpotifyPlaylists([]);
-                      if (source === 'streaming') setSource('local');
-                    }}>
-                      logout
-                    </button>
-                  </div>
-                </>
-              )
-            )}
-
-            {musicService === 'apple' && (
-              !appleConnected ? (
-                <button className="settings-theme-btn" onClick={async () => {
-                  try {
-                    await appleLogin();
-                    setAppleConnected(true);
-                    loadApplePlaylists();
-                  } catch (err) {
-                    setSettingsError(err.message);
-                  }
-                }}>
-                  log in
-                </button>
-              ) : (
-                <>
-                  <PlaylistList
-                    loading={loadingPlaylists}
-                    playlists={applePlaylists}
-                    loadingPlaylist={loadingPlaylist}
-                    onSelect={(id) => loadPlaylist(id, 'apple')}
-                  />
-                  <div className="settings-theme-row">
-                    <button
-                      className={`settings-theme-btn ${loadingPlaylists ? 'disabled' : ''}`}
-                      disabled={loadingPlaylists}
-                      onClick={() => loadApplePlaylists()}
-                    >
-                      refresh
-                    </button>
-                    <button className="settings-theme-btn" onClick={() => {
-                      appleLogout();
-                      setAppleConnected(false);
-                      setApplePlaylists([]);
-                      if (source === 'streaming') setSource('local');
-                    }}>
-                      logout
-                    </button>
-                  </div>
-                </>
-              )
             )}
 
             {musicService === 'youtube' && (

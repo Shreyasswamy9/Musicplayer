@@ -1,22 +1,122 @@
 [
-  { "file": "Bhaag D.K. Bose, Aandhi Aayi.mp3", "title": "Bhaag D.K. Bose, Aandhi Aayi", "artist": null, "art": null },
-  { "file": "Black Catcher.mp3", "title": "Black Catcher", "artist": null, "art": null },
-  { "file": "Blood Sweat & Tears.mp3", "title": "Blood Sweat & Tears", "artist": null, "art": null },
-  { "file": "Body to Body.mp3", "title": "Body to Body", "artist": null, "art": null },
-  { "file": "Chest Pain (I Love).mp3", "title": "Chest Pain (I Love)", "artist": null, "art": null },
-  { "file": "Dreams.mp3", "title": "Dreams", "artist": null, "art": null },
-  { "file": "Earrings.mp3", "title": "Earrings", "artist": null, "art": null },
-  { "file": "Everlasting Dance.mp3", "title": "Everlasting Dance", "artist": null, "art": null },
-  { "file": "Golden.mp3", "title": "Golden", "artist": null, "art": null },
-  { "file": "It Only Cost Everything.mp3", "title": "It Only Cost Everything", "artist": null, "art": null },
-  { "file": "JUMP.mp3", "title": "JUMP", "artist": null, "art": null },
-  { "file": "LATINA FOREVA.mp3", "title": "LATINA FOREVA", "artist": null, "art": null },
-  { "file": "Ma Meilleure Ennemie (from the series Arcane League of Legends).mp3", "title": "Ma Meilleure Ennemie (from the series Arcane League of Legends)", "artist": null, "art": null },
-  { "file": "Ripstick.mp3", "title": "Ripstick", "artist": null, "art": null },
-  { "file": "SWIM.mp3", "title": "SWIM", "artist": null, "art": null },
-  { "file": "Self Aware.mp3", "title": "Self Aware", "artist": null, "art": null },
-  { "file": "WHO DO U LOVE (feat. French Montana).mp3", "title": "WHO DO U LOVE (feat. French Montana)", "artist": null, "art": null },
-  { "file": "так не спокойна.mp3", "title": "так не спокойна", "artist": null, "art": null },
-  { "file": "അംശം.mp3", "title": "അംശം", "artist": null, "art": null },
-  { "file": "インフェルノ.mp3", "title": "インフェルノ", "artist": null, "art": null }
+  {
+    "file": "Earrings.mp3",
+    "title": "Earrings",
+    "artist": "Malcolm Todd",
+    "art": null
+  },
+  {
+    "file": "Dreams.mp3",
+    "title": "Dreams",
+    "artist": "Aaron May",
+    "art": null
+  },
+  {
+    "file": "SWIM.mp3",
+    "title": "SWIM",
+    "artist": "BTS",
+    "art": null
+  },
+  {
+    "file": "It Only Cost Everything.mp3",
+    "title": "It Only Cost Everything",
+    "artist": "Victor Ray",
+    "art": null
+  },
+  {
+    "file": "Blood Sweat & Tears.mp3",
+    "title": "Blood Sweat & Tears",
+    "artist": "BTS",
+    "art": null
+  },
+  {
+    "file": "Chest Pain (I Love).mp3",
+    "title": "Chest Pain (I Love)",
+    "artist": "Malcolm Todd",
+    "art": null
+  },
+  {
+    "file": "так не спокойна.mp3",
+    "title": "так не спокойна",
+    "artist": "Isko",
+    "art": null
+  },
+  {
+    "file": "Ripstick.mp3",
+    "title": "Ripstick",
+    "artist": "99 Neighbors",
+    "art": null
+  },
+  {
+    "file": "Everlasting Dance.mp3",
+    "title": "Everlasting Dance",
+    "artist": "Llunr",
+    "art": null
+  },
+  {
+    "file": "Golden.mp3",
+    "title": "Golden",
+    "artist": "HUNTR",
+    "art": null
+  },
+  {
+    "file": "അംശം.mp3",
+    "title": "അംശം",
+    "artist": "Aksomaniac",
+    "art": null
+  },
+  {
+    "file": "Body to Body.mp3",
+    "title": "Body to Body",
+    "artist": "BTS",
+    "art": null
+  },
+  {
+    "file": "JUMP.mp3",
+    "title": "JUMP",
+    "artist": "BLACKPINK",
+    "art": null
+  },
+  {
+    "file": "WHO DO U LOVE (feat. French Montana).mp3",
+    "title": "WHO DO U LOVE (feat. French Montana)",
+    "artist": "MONSTA X",
+    "art": null
+  },
+  {
+    "file": "Black Catcher.mp3",
+    "title": "Black Catcher",
+    "artist": "VK Blanka",
+    "art": null
+  },
+  {
+    "file": "Self Aware.mp3",
+    "title": "Self Aware",
+    "artist": "Temper City",
+    "art": null
+  },
+  {
+    "file": "Bhaag D.K. Bose, Aandhi Aayi.mp3",
+    "title": "Bhaag D.K. Bose, Aandhi Aayi",
+    "artist": "Ram Sampath",
+    "art": null
+  },
+  {
+    "file": "LATINA FOREVA.mp3",
+    "title": "LATINA FOREVA",
+    "artist": "KAROL G",
+    "art": null
+  },
+  {
+    "file": "インフェルノ.mp3",
+    "title": "インフェルノ",
+    "artist": "Mrs. GREEN APPLE",
+    "art": null
+  },
+  {
+    "file": "Ma Meilleure Ennemie (from the series Arcane League of Legends).mp3",
+    "title": "Ma Meilleure Ennemie (from the series Arcane League of Legends)",
+    "artist": "Stromae",
+    "art": null
+  }
 ]

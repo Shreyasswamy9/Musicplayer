@@ -3,12 +3,20 @@ const { app, BrowserWindow, ipcMain, screen, shell, protocol, net } = require('e
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const path = require('node:path');
-const { pathToFileURL } = require('node:url');
 const { Readable } = require('node:stream');
 const http = require('node:http');
 
 const fs = require('node:fs');
-const jwt = require('jsonwebtoken');
+
+// `music-metadata` is published as ESM-only; dynamically import it when
+// needed so this CommonJS main process can still use it.
+let _mm = null;
+async function getMusicMetadata() {
+  if (_mm) return _mm;
+  const mod = await import('music-metadata');
+  _mm = mod && mod.default ? mod.default : mod;
+  return _mm;
+}
 
 // Allow the app to start audio playback without requiring a user gesture.
 // This keeps the single-user startup flow frictionless.
@@ -29,42 +37,6 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true },
   },
 ]);
-
-// ── Apple Music developer token ──────────────────────────
-let appleMusicToken = null;
-let appleMusicTokenExpiry = 0;
-
-function generateAppleMusicToken() {
-  if (appleMusicToken && Date.now() < appleMusicTokenExpiry) {
-    return appleMusicToken;
-  }
-
-  const teamId = process.env.APPLE_TEAM_ID;
-  const keyId = process.env.APPLE_KEY_ID;
-
-  if (!teamId || !keyId) return null;
-
-  // Find the .p8 key file in project root
-  const projectRoot = path.join(__dirname, '..');
-  const keyFiles = fs.readdirSync(projectRoot).filter((f) => f.endsWith('.p8'));
-  if (keyFiles.length === 0) return null;
-
-  const privateKey = fs.readFileSync(path.join(projectRoot, keyFiles[0]), 'utf8');
-
-  appleMusicToken = jwt.sign({}, privateKey, {
-    algorithm: 'ES256',
-    expiresIn: '180d',
-    issuer: teamId,
-    header: {
-      alg: 'ES256',
-      kid: keyId,
-    },
-  });
-
-  // Cache for 179 days
-  appleMusicTokenExpiry = Date.now() + 179 * 24 * 60 * 60 * 1000;
-  return appleMusicToken;
-}
 
 // ── yt-dlp stream URL fetcher ────────────────────────────
 // streamCache: stream URLs (expire after ~30min on YT's side)
@@ -266,8 +238,7 @@ async function getStreamUrl(title, artist) {
   return promise;
 }
 
-// Direct cupid-audio URL for a known YouTube video ID — skips the search step
-// used by Spotify/Apple. Best-effort pre-warms the decipher cache.
+// Direct cupid-audio URL for a known YouTube video ID — skips the search step.
 function streamUrlForVideoId(videoId) {
   if (!YT_ID_RE.test(videoId)) throw new Error('Invalid YouTube video ID');
   resolveStreamUrl(videoId).catch(() => {});
@@ -433,46 +404,34 @@ function createWindow() {
 
   const onOpenExternal = (_e, url) => {
     if (typeof url === 'string' && url.startsWith('https://')) {
-      if (url.includes('accounts.spotify.com/authorize')) {
-        const authWin = new BrowserWindow({
-          width: 500,
-          height: 700,
-          parent: win,
-          modal: true,
-          show: true,
-          webPreferences: { nodeIntegration: false, contextIsolation: true },
-        });
-        authWin.loadURL(url);
-        const handleAuthRedirect = (event, callbackUrl) => {
-          if (callbackUrl.startsWith('http://127.0.0.1:5173/callback')) {
-            event.preventDefault();
-            const url = new URL(callbackUrl);
-            let target;
-            if (isDev) {
-              target = `http://127.0.0.1:5173/${url.search}`;
-            } else {
-              const fileUrl = pathToFileURL(path.join(__dirname, '..', 'dist', 'index.html'));
-              fileUrl.search = url.search;
-              target = fileUrl.href;
-            }
-            win.loadURL(target);
-            authWin.close();
-          }
-        };
-        authWin.webContents.on('will-redirect', handleAuthRedirect);
-        authWin.webContents.on('will-navigate', handleAuthRedirect);
-        return;
-      }
       shell.openExternal(url);
     }
   };
 
   const onSetTheme = (_e, theme) => {
-    const iconPath = path.join(__dirname, '..', 'assets', theme, 'favicon.png');
-    if (process.platform === 'darwin' && app.dock) {
-      app.dock.setIcon(iconPath);
+    // Resolve requested theme asset, but fall back to existing assets when
+    // the named folder (e.g. "purple") doesn't exist in development.
+    let iconPath = path.join(__dirname, '..', 'assets', theme, 'favicon.png');
+    if (!fs.existsSync(iconPath)) {
+      // Legacy/theme alias: map 'purple' -> 'pink', then try 'blue'
+      const altTheme = theme === 'purple' ? 'pink' : 'pink';
+      const altPath = path.join(__dirname, '..', 'assets', altTheme, 'favicon.png');
+      if (fs.existsSync(altPath)) {
+        iconPath = altPath;
+      } else {
+        const bluePath = path.join(__dirname, '..', 'assets', 'blue', 'favicon.png');
+        if (fs.existsSync(bluePath)) iconPath = bluePath;
+      }
     }
-    win.setIcon(iconPath);
+
+    try {
+      if (process.platform === 'darwin' && app.dock) {
+        app.dock.setIcon(iconPath);
+      }
+      win.setIcon(iconPath);
+    } catch (err) {
+      console.warn('[set-theme] failed to set icon:', err.message);
+    }
   };
 
   ipcMain.on('window-minimize', onMinimize);
@@ -492,28 +451,6 @@ function createWindow() {
     ipcMain.removeListener('set-theme', onSetTheme);
   });
 
-  // Handle Spotify OAuth callback in production.
-  win.webContents.on('will-navigate', (event, url) => {
-    try {
-      const parsed = new URL(url);
-      if (parsed.hostname === 'accounts.spotify.com') {
-        event.preventDefault();
-        shell.openExternal(url);
-        return;
-      }
-      if (parsed.pathname === '/callback' && parsed.searchParams.has('code')) {
-        if (!isDev) {
-          event.preventDefault();
-          const fileUrl = pathToFileURL(path.join(__dirname, '..', 'dist', 'index.html'));
-          fileUrl.search = parsed.search;
-          win.loadURL(fileUrl.href);
-        }
-      }
-    } catch {
-      // ignore invalid URLs
-    }
-  });
-
   // Toggle DevTools with Cmd+Shift+I / Ctrl+Shift+I / F12
   win.webContents.on('before-input-event', (_e, input) => {
     if (input.type !== 'keyDown') return;
@@ -531,10 +468,6 @@ function createWindow() {
 }
 
 // ── Global IPC handlers (persist across window reloads) ──
-ipcMain.handle('get-apple-music-token', () => {
-  return generateAppleMusicToken();
-});
-
 ipcMain.handle('get-stream-url', async (_e, title, artist) => {
   try {
     return await getStreamUrl(title, artist);
@@ -547,7 +480,77 @@ ipcMain.handle('get-local-playlist', async () => {
   try {
     const raw = await fs.promises.readFile(userPlaylistFile(), 'utf8');
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+
+    // Fill missing artist fields from ID3 tags when possible.
+    const filled = await Promise.all(parsed.map(async (t) => {
+      const entry = { ...t };
+      // Default placeholder for art (not persisted)
+      entry._art = null;
+
+      // If artist already present and non-empty, keep it but still try
+      // to extract embedded artwork when available.
+      let needArtistFill = !(entry && (typeof entry.artist === 'string' && entry.artist.trim()));
+
+      // Try reading from the audio file's metadata for artist and embedded art
+      try {
+        const filePath = path.join(userAudioDir(), entry.file || '');
+        const stat = await fs.promises.stat(filePath).catch(() => null);
+        if (stat && stat.isFile()) {
+          const mmLib = await getMusicMetadata();
+          const meta = await mmLib.parseFile(filePath, { duration: false }).catch(() => null);
+          if (needArtistFill) {
+            const artist = meta && (meta.common.artist || (meta.common.artists && meta.common.artists.join(', ')));
+            entry.artist = artist || '';
+          }
+
+          // Extract first picture frame if present and convert to data URL
+          const pics = meta && meta.common && meta.common.picture;
+          if (pics && Array.isArray(pics) && pics.length > 0) {
+            try {
+              const pic = pics[0];
+              const b64 = Buffer.isBuffer(pic.data) ? pic.data.toString('base64') : Buffer.from(pic.data).toString('base64');
+              const mime = pic.format || 'image/jpeg';
+              entry._art = `data:${mime};base64,${b64}`;
+            } catch (e) {
+              entry._art = null;
+            }
+          }
+        } else if (needArtistFill) {
+          entry.artist = '';
+        }
+      } catch (err) {
+        if (needArtistFill) entry.artist = '';
+      }
+      return entry;
+    }));
+
+    // Persist repaired playlist so names remain for future launches
+    try {
+      // Persist only non-binary playlist fields (don't write embedded art data URLs)
+      const persisted = filled.map((e) => {
+        const copy = { ...e };
+        delete copy._art;
+        return copy;
+      });
+      await fs.promises.writeFile(userPlaylistFile(), JSON.stringify(persisted, null, 2), 'utf8');
+    } catch (err) {
+      console.warn('[playlist.json] failed to persist repaired playlist:', err.message);
+    }
+
+    // Debug: log artist values returned
+    try {
+      console.log('[get-local-playlist] artists =>', filled.map((f) => f && f.artist));
+    } catch {}
+
+    // Return entries enriched with `art` property derived from _art, but
+    // don't expose the internal _art field to persisted JSON.
+    return filled.map((e) => {
+      const out = { ...e };
+      out.art = e._art || null;
+      delete out._art;
+      return out;
+    });
   } catch (err) {
     if (err.code !== 'ENOENT') console.warn('[playlist.json]', err.message);
     return [];

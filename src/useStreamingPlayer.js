@@ -1,24 +1,19 @@
 /**
- * React hook for Spotify playback via YouTube audio streams.
+ * React hook for streaming playback via YouTube audio streams.
  *
- * Spotify API supplies metadata/playlists; audio is fetched from YouTube
- * in the main process (cupid-audio:// protocol) and played via HTML5 Audio.
- *
- * Same interface as useAudioPlayer.
+ * Audio is fetched from YouTube in the main process (cupid-audio:// protocol)
+ * and played via HTML5 Audio. Same interface as useAudioPlayer.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-export default function useSpotifyPlayer(tracks, playMode = 'normal') {
+export default function useStreamingPlayer(tracks, playMode = 'normal') {
   const audioRef = useRef(new Audio());
   const playModeRef = useRef(playMode);
   playModeRef.current = playMode;
-  // Shared between prefetch, next(), and onEnded so we play what we warmed
   const nextIdxRef = useRef(null);
   const [trackIndex, setTrackIndex] = useState(0);
 
-  // Reset to track 0 on playlist change, otherwise the stale index can be
-  // out of bounds for the new playlist
   const prevTracksRef = useRef(tracks);
   if (prevTracksRef.current !== tracks) {
     prevTracksRef.current = tracks;
@@ -26,8 +21,6 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
     setTrackIndex(0);
   }
   const [isPlaying, setIsPlaying] = useState(false);
-  // Ref so the async load effect sees the latest value when it resolves,
-  // not the one captured when it started
   const isPlayingRef = useRef(false);
   isPlayingRef.current = isPlaying;
   const [progress, setProgress] = useState(0);
@@ -51,7 +44,20 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
     uri: null,
   };
 
-  // ── Load track when index or tracks change ────────────────
+  async function resolveTrackStream(t) {
+    if (!t) throw new Error('No track');
+
+    if (t.videoId) {
+      try {
+        return await window.cupid.getStreamUrlById(t.videoId);
+      } catch (err) {
+        console.warn('Direct video ID stream failed, falling back to search:', err.message);
+      }
+    }
+
+    return window.cupid.getStreamUrl(t.title, t.artist);
+  }
+
   useEffect(() => {
     if (tracks.length === 0) return;
     const t = tracks[trackIndex];
@@ -62,11 +68,8 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
 
     async function loadStream() {
       try {
-        const url = t.videoId
-          ? await window.cupid.getStreamUrlById(t.videoId)
-          : await window.cupid.getStreamUrl(t.title, t.artist);
+        const url = await resolveTrackStream(t);
         if (cancelled) return;
-        // setting src triggers loading; an explicit audio.load() would reset it
         audio.src = url;
         if (isPlayingRef.current) {
           audio.play().catch(() => {});
@@ -83,7 +86,6 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
     return () => { cancelled = true; };
   }, [trackIndex, tracks]);
 
-  // ── Precompute next index + prefetch surrounding tracks ───
   useEffect(() => {
     if (tracks.length === 0) {
       nextIdxRef.current = null;
@@ -96,11 +98,7 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
       const t = tracks[idx];
       if (!t) return;
       prefetched.add(idx);
-      if (t.videoId) {
-        window.cupid.getStreamUrlById(t.videoId).catch(() => {});
-      } else {
-        window.cupid.getStreamUrl(t.title, t.artist).catch(() => {});
-      }
+      resolveTrackStream(t).catch(() => {});
     };
 
     let nextIdx;
@@ -115,14 +113,12 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
 
     prefetch(nextIdx);
 
-    // Shuffle's second hop is unpredictable, so only look ahead in linear mode
     if (playMode !== 'shuffle') {
       prefetch((trackIndex + 2) % tracks.length);
       prefetch((trackIndex - 1 + tracks.length) % tracks.length);
     }
   }, [trackIndex, tracks, playMode]);
 
-  // ── Audio event listeners ─────────────────────────────────
   useEffect(() => {
     const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
@@ -131,9 +127,7 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
       }
     };
 
-    const onLoadedMetadata = () => {
-      setDuration(audio.duration);
-    };
+    const onLoadedMetadata = () => { setDuration(audio.duration); };
 
     const onEnded = () => {
       if (playModeRef.current === 'repeat') {
@@ -165,8 +159,6 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
     };
   }, [tracks.length]);
 
-  // ── Playback controls ────────────────────────────────────
-
   const togglePlay = useCallback(() => {
     if (isPlaying) {
       audio.pause();
@@ -179,7 +171,6 @@ export default function useSpotifyPlayer(tracks, playMode = 'normal') {
 
   const next = useCallback(() => {
     setTrackIndex((prev) => {
-      // Prefer the precomputed next (matches what prefetch warmed)
       if (nextIdxRef.current !== null && nextIdxRef.current !== prev) {
         return nextIdxRef.current;
       }
