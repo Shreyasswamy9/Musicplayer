@@ -111,12 +111,9 @@ export default function useStreamingPlayer(tracks, playMode = 'normal') {
     }
     nextIdxRef.current = nextIdx;
 
+    // Keep prefetch fanout intentionally small; multiple parallel yt-dlp
+    // calls can trigger intermittent extraction failures.
     prefetch(nextIdx);
-
-    if (playMode !== 'shuffle') {
-      prefetch((trackIndex + 2) % tracks.length);
-      prefetch((trackIndex - 1 + tracks.length) % tracks.length);
-    }
   }, [trackIndex, tracks, playMode]);
 
   useEffect(() => {

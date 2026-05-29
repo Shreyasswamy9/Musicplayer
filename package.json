@@ -37,6 +37,7 @@
   "build": {
     "appId": "com.codedbycupidity.cass-player",
     "productName": "Cass Player",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "dist/**/*",
       "electron/**/*",
@@ -62,7 +63,7 @@
       "output": "out"
     },
     "mac": {
-      "target": "dir",
+      "target": ["dmg", "zip"],
       "category": "public.app-category.music",
       "icon": "assets/pink/icon.png"
     },

@@ -712,78 +712,78 @@ export default function App() {
             )}
 
             {musicService === 'youtube' && (
-              isYouTubeConfigured() ? (
-                !youtubeConnected ? (
-                  <button
-                    className={`settings-theme-btn ${youtubeLoggingIn ? 'disabled' : ''}`}
-                    disabled={youtubeLoggingIn}
-                    onClick={async () => {
-                      setYoutubeLoggingIn(true);
-                      setSettingsError(null);
-                      try {
-                        await youtubeLogin();
-                        setYoutubeConnected(true);
-                        loadYoutubePlaylists();
-                      } catch (err) {
-                        setSettingsError(err.message);
-                      } finally {
-                        setYoutubeLoggingIn(false);
-                      }
-                    }}
-                  >
-                    {youtubeLoggingIn ? 'waiting for browser...' : 'log in with google'}
-                  </button>
-                ) : (
-                  <>
-                    <PlaylistList
-                      loading={loadingPlaylists}
-                      playlists={youtubePlaylists}
-                      loadingPlaylist={loadingPlaylist}
-                      onSelect={(id) => loadPlaylist(id, 'youtube')}
-                    />
-                    <div className="settings-theme-row">
-                      <button
-                        className={`settings-theme-btn ${loadingPlaylists ? 'disabled' : ''}`}
-                        disabled={loadingPlaylists}
-                        onClick={() => loadYoutubePlaylists()}
-                      >
-                        refresh
-                      </button>
-                      <button className="settings-theme-btn" onClick={() => {
-                        youtubeLogout();
-                        setYoutubeConnected(false);
-                        setYoutubePlaylists([]);
-                        if (source === 'streaming') setSource('local');
-                      }}>
-                        logout
-                      </button>
-                    </div>
-                  </>
-                )
-              ) : (
-                <>
-                  <input
-                    className="settings-input"
-                    type="text"
-                    placeholder="paste a youtube playlist link"
-                    value={youtubeUrlInput}
-                    onChange={(e) => setYoutubeUrlInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && youtubeUrlInput.trim()) {
-                        loadYoutubePlaylistFromUrl(youtubeUrlInput.trim());
-                      }
-                    }}
-                    disabled={loadingPlaylist}
-                  />
-                  <button
-                    className={`settings-theme-btn ${loadingPlaylist || !youtubeUrlInput.trim() ? 'disabled' : ''}`}
-                    onClick={() => loadYoutubePlaylistFromUrl(youtubeUrlInput.trim())}
-                    disabled={loadingPlaylist || !youtubeUrlInput.trim()}
-                  >
-                    {loadingPlaylist ? 'loading...' : 'load playlist'}
-                  </button>
-                </>
-              )
+              <>
+                <input
+                  className="settings-input"
+                  type="text"
+                  placeholder="paste a youtube playlist link"
+                  value={youtubeUrlInput}
+                  onChange={(e) => setYoutubeUrlInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && youtubeUrlInput.trim()) {
+                      loadYoutubePlaylistFromUrl(youtubeUrlInput.trim());
+                    }
+                  }}
+                  disabled={loadingPlaylist}
+                />
+                <button
+                  className={`settings-theme-btn ${loadingPlaylist || !youtubeUrlInput.trim() ? 'disabled' : ''}`}
+                  onClick={() => loadYoutubePlaylistFromUrl(youtubeUrlInput.trim())}
+                  disabled={loadingPlaylist || !youtubeUrlInput.trim()}
+                >
+                  {loadingPlaylist ? 'loading...' : 'load playlist'}
+                </button>
+
+                {isYouTubeConfigured() && (
+                  !youtubeConnected ? (
+                    <button
+                      className={`settings-theme-btn ${youtubeLoggingIn ? 'disabled' : ''}`}
+                      disabled={youtubeLoggingIn}
+                      onClick={async () => {
+                        setYoutubeLoggingIn(true);
+                        setSettingsError(null);
+                        try {
+                          await youtubeLogin();
+                          setYoutubeConnected(true);
+                          loadYoutubePlaylists();
+                        } catch (err) {
+                          setSettingsError(err.message);
+                        } finally {
+                          setYoutubeLoggingIn(false);
+                        }
+                      }}
+                    >
+                      {youtubeLoggingIn ? 'waiting for browser...' : 'log in with google'}
+                    </button>
+                  ) : (
+                    <>
+                      <PlaylistList
+                        loading={loadingPlaylists}
+                        playlists={youtubePlaylists}
+                        loadingPlaylist={loadingPlaylist}
+                        onSelect={(id) => loadPlaylist(id, 'youtube')}
+                      />
+                      <div className="settings-theme-row">
+                        <button
+                          className={`settings-theme-btn ${loadingPlaylists ? 'disabled' : ''}`}
+                          disabled={loadingPlaylists}
+                          onClick={() => loadYoutubePlaylists()}
+                        >
+                          refresh
+                        </button>
+                        <button className="settings-theme-btn" onClick={() => {
+                          youtubeLogout();
+                          setYoutubeConnected(false);
+                          setYoutubePlaylists([]);
+                          if (source === 'streaming') setSource('local');
+                        }}>
+                          logout
+                        </button>
+                      </div>
+                    </>
+                  )
+                )}
+              </>
             )}
 
             {settingsError && <div className="settings-error">{settingsError}</div>}

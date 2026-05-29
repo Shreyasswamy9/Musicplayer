@@ -145,28 +145,85 @@ async function searchYouTubeMusic(title, artist) {
 }
 
 async function ytDlpExtract(target) {
-  const { stdout } = await execFileAsync(getYtDlpPath(), [
+  const pickUrl = (stdout) => {
+    const lines = String(stdout || '')
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => /^https?:\/\//.test(l));
+    if (lines.length === 0) return '';
+
+    // yt-dlp can return multiple URLs (e.g. progressive video + separate audio).
+    // Prefer explicit audio URLs so the renderer does not attempt video decode.
+    const audioLine = lines.find((l) => (
+      /mime=audio(%2F|\/)/i.test(l)
+      || /[?&]itag=(139|140|141|171|249|250|251|258|327|328)\b/.test(l)
+    ));
+    return audioLine || lines[lines.length - 1];
+  };
+
+  const baseArgs = [
     target,
-    '-f', 'bestaudio[ext=m4a]/bestaudio',
     '--no-playlist',
     '--no-warnings',
+    '--ignore-config',
+    '--js-runtimes', 'node',
     '-g',
-  ], { timeout: 15000 });
-  return stdout.trim();
+  ];
+
+  const strategies = [
+    ['-f', 'bestaudio[ext=m4a]/bestaudio/best', '--extractor-args', 'youtube:player_client=android,web'],
+    ['-f', 'bestaudio/best', '--extractor-args', 'youtube:player_client=android'],
+    ['-f', 'bestaudio/best'],
+  ];
+
+  let lastErr = null;
+  for (const strategy of strategies) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const { stdout } = await execFileAsync(getYtDlpPath(), [...baseArgs, ...strategy], {
+          timeout: 60000,
+          maxBuffer: 1024 * 1024,
+        });
+        const url = pickUrl(stdout);
+        if (!url) throw new Error('yt-dlp returned no playable stream URL');
+        return url;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+  }
+
+  const stderr = (lastErr && lastErr.stderr ? String(lastErr.stderr).trim() : '');
+  throw new Error(stderr ? `yt-dlp extract failed: ${stderr}` : `yt-dlp extract failed: ${lastErr?.message || 'unknown error'}`);
 }
 
 async function ytDlpSearch(title, artist) {
+  const pickUrl = (stdout) => {
+    const lines = String(stdout || '')
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const id = lines.find((l) => YT_ID_RE.test(l));
+    const urlLines = lines.filter((l) => l.startsWith('http'));
+    const audioLine = urlLines.find((l) => (
+      /mime=audio(%2F|\/)/i.test(l)
+      || /[?&]itag=(139|140|141|171|249|250|251|258|327|328)\b/.test(l)
+    ));
+    const url = audioLine || urlLines[urlLines.length - 1] || '';
+    return { id, url };
+  };
+
   const { stdout } = await execFileAsync(getYtDlpPath(), [
     `ytsearch1:"${title}" ${artist}`,
-    '-f', 'bestaudio[ext=m4a]/bestaudio',
+    '-f', 'bestaudio[ext=m4a]/bestaudio/best',
     '--no-playlist',
     '--no-warnings',
+    '--js-runtimes', 'node',
+    '--extractor-args', 'youtube:player_client=android,web',
     '--print', '%(id)s',
     '-g',
-  ], { timeout: 15000 });
-  const lines = stdout.trim().split('\n').map((l) => l.trim()).filter(Boolean);
-  const id = lines.find((l) => YT_ID_RE.test(l));
-  const url = lines.find((l) => l.startsWith('http'));
+  ], { timeout: 60000, maxBuffer: 1024 * 1024 });
+  const { id, url } = pickUrl(stdout);
   if (!id || !url) throw new Error('yt-dlp search returned no usable result');
   return { id, url };
 }
@@ -761,7 +818,9 @@ app.whenReady().then(() => {
 
       const upstream = await net.fetch(streamUrl, { headers });
       const respHeaders = new Headers(upstream.headers);
-      respHeaders.set('Content-Type', 'audio/mp4');
+      if (!respHeaders.get('Content-Type')) {
+        respHeaders.set('Content-Type', 'audio/mpeg');
+      }
       return new Response(upstream.body, {
         status: upstream.status,
         statusText: upstream.statusText,

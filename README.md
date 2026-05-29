@@ -122,11 +122,18 @@ npm run package
 ### Install as Desktop App
 
 **macOS:**
+
+`npm run package` creates installable mac artifacts in `out/`, including a `.dmg` for easy drag-and-drop install and a `.zip` for sharing.
+
+Open the DMG, drag **Cass Player** into **Applications**, then launch it from Launchpad or Applications.
+
 ```bash
-cp -r "out/mac-arm64/Cass Player.app" /Applications/
+open "out/Cass Player-0.0.0-mac-arm64.dmg"
 ```
 
-> Note: The macOS build is unsigned. On first launch you may need to right-click > Open, or go to System Settings > Privacy & Security to allow it.
+> Note: the macOS build is unsigned. On first launch you may need to right-click > Open, or go to System Settings > Privacy & Security to allow it.
+>
+> If you want a truly frictionless download for other people, the next step is Apple signing and notarization before distributing the DMG.
 
 ## Tech Stack
 
